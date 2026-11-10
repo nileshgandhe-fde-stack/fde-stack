@@ -1,10 +1,12 @@
 
-  
-  create view "fde_warehouse"."main"."stg_enterprise_claims__dbt_tmp" as (
+  create view "neondb"."public"."stg_enterprise_claims__dbt_tmp"
+    
+    
+  as (
     
 
 WITH raw_source AS (
-    SELECT * FROM "fde_warehouse"."main"."raw_claims"
+    SELECT * FROM "neondb"."public"."raw_claims"
 ),
 
 deduplicated AS (

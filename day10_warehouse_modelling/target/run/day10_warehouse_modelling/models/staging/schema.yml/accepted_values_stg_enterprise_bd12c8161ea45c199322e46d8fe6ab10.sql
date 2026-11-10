@@ -1,4 +1,5 @@
 
+    
     select
       count(*) as failures,
       count(*) != 0 as should_warn,
@@ -16,7 +17,7 @@ with all_values as (
         claim_status as value_field,
         count(*) as n_records
 
-    from "fde_warehouse"."main"."stg_enterprise_claims"
+    from "neondb"."public"."stg_enterprise_claims"
     group by claim_status
 
 )
