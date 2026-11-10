@@ -1,0 +1,11 @@
+
+    
+    
+    truncate table "fde_warehouse"."main"."raw_claims";
+    -- dbt seed --
+    
+          COPY "fde_warehouse"."main"."raw_claims" FROM '/workspaces/fde-stack/day10_warehouse_modelling/seeds/raw_claims.csv' (FORMAT CSV, HEADER TRUE, DELIMITER ',')
+        
+
+;
+  

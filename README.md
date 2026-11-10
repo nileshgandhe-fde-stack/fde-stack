@@ -14,6 +14,8 @@ This repository contains a small set of learning-focused service examples coveri
 - [day5_7_ops_ui/README.md](day5_7_ops_ui/README.md) — technical documentation for the operations UI dashboard.
 - [day8_9_data_analytics](day8_9_data_analytics) — DuckDB-powered data cleanup, deduplication, and analytics preparation for noisy enterprise data.
 - [day8_9_data_analytics/README.md](day8_9_data_analytics/README.md) — technical documentation for the dirty-data cleaning workflow.
+- [day10_warehouse_modelling](day10_warehouse_modelling) — dbt-based warehouse modelling and staging-layer validation for enterprise claim data.
+- [day10_warehouse_modelling/README.md](day10_warehouse_modelling/README.md) — technical documentation for the dbt warehouse modelling project.
 
 ## Learning goals
 
