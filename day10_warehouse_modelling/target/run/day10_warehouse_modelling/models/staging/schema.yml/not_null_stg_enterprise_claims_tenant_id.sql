@@ -1,4 +1,5 @@
 
+    
     select
       count(*) as failures,
       count(*) != 0 as should_warn,
@@ -13,7 +14,7 @@
 
 
 select tenant_id
-from "fde_warehouse"."main"."stg_enterprise_claims"
+from "neondb"."public"."stg_enterprise_claims"
 where tenant_id is null
 
 

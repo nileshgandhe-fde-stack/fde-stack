@@ -1,7 +1,7 @@
 
 
 WITH raw_source AS (
-    SELECT * FROM "fde_warehouse"."main"."raw_claims"
+    SELECT * FROM "neondb"."public"."raw_claims"
 ),
 
 deduplicated AS (

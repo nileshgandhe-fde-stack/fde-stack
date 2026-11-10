@@ -5,7 +5,7 @@
 
 
 select status
-from "fde_warehouse"."main"."raw_claims"
+from "neondb"."public"."raw_claims"
 where status is null
 
 

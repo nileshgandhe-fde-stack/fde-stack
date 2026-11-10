@@ -3,7 +3,7 @@ version: 2
 sources:
   - name: legacy_erp
     description: "Legacy ERP raw claims feed"
-    schema: main
+    schema: public
     tables:
       - name: raw_claims
         description: "Raw enterprise claims imported from the legacy ERP source"

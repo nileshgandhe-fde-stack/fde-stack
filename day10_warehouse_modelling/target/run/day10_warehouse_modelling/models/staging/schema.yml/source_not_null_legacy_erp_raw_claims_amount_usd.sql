@@ -1,4 +1,5 @@
 
+    
     select
       count(*) as failures,
       count(*) != 0 as should_warn,
@@ -13,7 +14,7 @@
 
 
 select amount_usd
-from "fde_warehouse"."main"."raw_claims"
+from "neondb"."public"."raw_claims"
 where amount_usd is null
 
 
