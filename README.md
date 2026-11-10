@@ -12,6 +12,8 @@ This repository contains a small set of learning-focused service examples coveri
 - [day4_oidc_and_rbac/README.md](day4_oidc_and_rbac/README.md) — technical documentation for the OIDC/RBAC gateway.
 - [day5_7_ops_ui](day5_7_ops_ui) — Streamlit operations console for triage, RBAC-aware actions, and live incident views.
 - [day5_7_ops_ui/README.md](day5_7_ops_ui/README.md) — technical documentation for the operations UI dashboard.
+- [day8_9_data_analytics](day8_9_data_analytics) — DuckDB-powered data cleanup, deduplication, and analytics preparation for noisy enterprise data.
+- [day8_9_data_analytics/README.md](day8_9_data_analytics/README.md) — technical documentation for the dirty-data cleaning workflow.
 
 ## Learning goals
 
