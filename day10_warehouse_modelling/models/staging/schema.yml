@@ -1,0 +1,57 @@
+version: 2
+
+sources:
+  - name: legacy_erp
+    description: "Legacy ERP raw claims feed"
+    schema: main
+    tables:
+      - name: raw_claims
+        description: "Raw enterprise claims imported from the legacy ERP source"
+        columns:
+          - name: claim_id
+            description: "Unique claim identifier"
+            tests:
+              - not_null
+          - name: tenant_id
+            description: "Tenant or client code"
+            tests:
+              - not_null
+          - name: amount_usd
+            description: "Claim amount in USD"
+            tests:
+              - not_null
+          - name: status
+            description: "Claim status from the legacy system"
+            tests:
+              - not_null
+          - name: updated_at
+            description: "Last update timestamp for the claim record"
+            tests:
+              - not_null
+
+models:
+  - name: stg_enterprise_claims
+    description: "Deduplicated, contract-validated enterprise claims staging view"
+    columns:
+      - name: claim_id
+        description: "Primary key for enterprise claim"
+        tests:
+          - unique
+          - not_null
+      - name: tenant_id
+        description: "Normalized tenant identifier"
+        tests:
+          - not_null
+      - name: claim_status
+        description: "Normalized claim status"
+        tests:
+          - accepted_values:
+              values: ['PENDING', 'APPROVED', 'DENIED', 'ESCALATED']
+      - name: amount_usd
+        description: "Normalized amount in USD"
+        tests:
+          - not_null
+      - name: updated_at
+        description: "Latest update timestamp after deduplication"
+        tests:
+          - not_null
