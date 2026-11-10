@@ -3,7 +3,7 @@ version: 2
 sources:
   - name: legacy_erp
     description: "Legacy ERP raw claims feed"
-    schema: public
+    schema: public #connecting to neondb server postgres
     tables:
       - name: raw_claims
         description: "Raw enterprise claims imported from the legacy ERP source"
