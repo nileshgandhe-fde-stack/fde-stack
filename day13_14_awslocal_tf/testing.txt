@@ -1,0 +1,74 @@
+Use three terminals: one to provision LocalStack, one to run the worker, and one to upload a test CSV.
+
+### 1. Apply the LocalStack configuration
+
+```bash
+cd /workspaces/fde-stack/day13_14_awslocal_tf
+terraform init
+terraform apply
+```
+
+Confirm the bucket is reachable:
+
+```bash
+aws --endpoint-url=http://localhost:4566 s3 ls
+```
+
+### 2. Start the worker
+
+Set `DATABASE_URL` to your Neon **pooled** connection string. Keep this terminal running:
+
+```bash
+cd /workspaces/fde-stack/day13_14_awslocal_tf
+
+export SQS_QUEUE_URL="$(terraform output -raw sqs_ingest_url)"
+export DATABASE_URL='postgresql://...'
+
+/workspaces/fde-stack/.venv/bin/python sqs_csv_worker.py
+```
+
+The worker creates the `clean_claims` table on startup.
+
+### 3. Upload a test CSV
+
+In another terminal, create a CSV containing a duplicate claim and some rows the transformation should filter out:
+
+```bash
+cat > /tmp/claims-test.csv <<'CSV'
+claim_id,tenant_id,amount_usd,status,updated_at
+CLM-TEST-1,Acme_Health,125.50,PENDING,2026-10-01 09:00:00
+CLM-TEST-1,ACME_HEALTH,125.50,APPROVED,2026-10-02 09:00:00
+CLM-TEST-2,Globex,-9.00,DENIED,2026-10-02 09:00:00
+CLM-TEST-3,Globex,20.00,UNKNOWN,2026-10-02 09:00:00
+CSV
+
+```
+lstk aws s3 cp /tmp/claims-test.csv s3://enterprise-client-dropzone/incoming/claims-test.csv
+
+
+The worker should log a processed message with **1 clean record**: the newest `CLM-TEST-1` row. The negative amount and unknown status should be filtered out.
+
+### 4. Verify the Neon row
+
+sudo apt-get update && sudo apt-get install -y postgresql-client # install postgressql-client
+
+In a terminal with `DATABASE_URL` set:
+
+```bash
+psql "$DATABASE_URL" -c \
+  "SELECT claim_id, tenant_id, amount_usd, claim_status, updated_at
+   FROM clean_claims
+   WHERE claim_id LIKE 'CLM-TEST-%'
+   ORDER BY claim_id;"
+```
+
+You should see `CLM-TEST-1`, normalized to tenant `acme_health` and status `APPROVED`.
+
+To rerun the local tests:
+
+```bash
+cd /workspaces/fde-stack/day13_14_awslocal_tf
+/workspaces/fde-stack/.venv/bin/python -m unittest discover -s tests -v
+```
+
+Avoid manually calling SQS `receive-message` while the worker is running, since that can take the test message away from the worker. If processing fails, the current worker exits and leaves the message unacknowledged; restart it to retry. Setup details are in the `module README`.

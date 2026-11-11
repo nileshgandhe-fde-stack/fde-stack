@@ -16,6 +16,8 @@ This repository contains a small set of learning-focused service examples coveri
 - [day8_9_data_analytics/README.md](day8_9_data_analytics/README.md) — technical documentation for the dirty-data cleaning workflow.
 - [day10_warehouse_modelling](day10_warehouse_modelling) — dbt-based warehouse modelling and staging-layer validation for enterprise claim data.
 - [day10_warehouse_modelling/README.md](day10_warehouse_modelling/README.md) — technical documentation for the dbt warehouse modelling project.
+- [day13_14_awslocal_tf](day13_14_awslocal_tf) — LocalStack S3-to-SQS CSV ingestion, DuckDB cleanup, and Neon Postgres loading.
+- [day13_14_awslocal_tf/README.md](day13_14_awslocal_tf/README.md) — setup and run instructions for the local claims worker.
 
 ## Learning goals
 
