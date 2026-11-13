@@ -9,5 +9,5 @@ python hybrid_rag_rrf.py ask "How do I fix ERR_SSL_09?" --role ops_viewer
 
 -----------
 
-read -s -p "Groq API key: "<GROQ_API_KEY>; echo
+read -s -p "GROQ_API_KEY: "<GROQ_API_KEY>; echo
 export GROQ_API_KEY
