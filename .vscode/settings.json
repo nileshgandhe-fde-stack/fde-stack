@@ -1,5 +1,6 @@
 {
-    "workbench.colorTheme": "Dark+",
+    "workbench.colorTheme": "GitHub Dark",
     "workbench.preferredLightColorTheme": "Dark Modern",
-    "window.autoDetectColorScheme": true
+    "window.autoDetectColorScheme": true,
+    "workbench.preferredDarkColorTheme": "Ayu Dark Bordered"
 }
