@@ -1,17 +1,19 @@
 """Header-aware hybrid search for Markdown SRE runbooks and architecture docs.
 
 Install dependencies:
-    pip install "psycopg[binary]" pgvector sentence-transformers groq
+    python -m pip install -r day15_16_hybrid_search_rag/requirements.txt
 
 Set DATABASE_URL and GROQ_API_KEY, then:
-    python hybrid_rag_rrf.py init
-    python hybrid_rag_rrf.py ingest runbook.md --doc-id payments-v1 \\
-        --service-name payments --required-role ops_viewer
-    python hybrid_rag_rrf.py ask "How do I fix ERR_SSL_09?" --role ops_viewer
+    python -m day15_16_hybrid_search_rag.hybrid_rag_rrf init
+    python -m day15_16_hybrid_search_rag.hybrid_rag_rrf ingest \\
+        day15_16_hybrid_search_rag/runbook.md --doc-id payments-v1 \\
+        --service-name payments --allowed-role ops_viewer
+    python -m day15_16_hybrid_search_rag.hybrid_rag_rrf ask \\
+        "How do I fix ERR_SSL_09?" --role ops_viewer
 Optionally set GROQ_MODEL to a model available to your Groq account.
 
-In an application, derive the role from a verified identity/JWT claim; never trust a
-role supplied directly by an end user.
+In an application, pass the caller's role from Day 4's verified JWT claims; never
+trust a role supplied directly by an end user.
 """
 
 import argparse
@@ -23,10 +25,6 @@ from pathlib import Path
 from typing import Any
 
 import psycopg
-from groq import Groq
-from pgvector import Vector
-from pgvector.psycopg import register_vector
-from sentence_transformers import SentenceTransformer
 
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
@@ -37,11 +35,33 @@ TOP_K = 5
 SCHEMA_STATEMENTS = (
     "CREATE EXTENSION IF NOT EXISTS vector",
     """
-    CREATE TABLE IF NOT EXISTS runbook_chunks (
+    DO $$
+    BEGIN
+        IF to_regclass('document_chunks') IS NULL
+           AND to_regclass('runbook_chunks') IS NOT NULL THEN
+            ALTER TABLE runbook_chunks RENAME TO document_chunks;
+            ALTER TABLE document_chunks RENAME COLUMN required_role TO allowed_roles;
+            ALTER TABLE document_chunks
+                ALTER COLUMN allowed_roles TYPE text[] USING ARRAY[allowed_roles];
+            ALTER TABLE document_chunks
+                ADD CONSTRAINT document_chunks_allowed_roles_nonempty
+                CHECK (cardinality(allowed_roles) > 0);
+            ALTER INDEX IF EXISTS runbook_chunks_search_idx
+                RENAME TO document_chunks_search_idx;
+            ALTER INDEX IF EXISTS runbook_chunks_embedding_idx
+                RENAME TO document_chunks_embedding_idx;
+        END IF;
+    END;
+    $$
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS document_chunks (
         chunk_id bigserial PRIMARY KEY,
         doc_id text NOT NULL,
         service_name text NOT NULL,
-        required_role text NOT NULL,
+        allowed_roles text[] NOT NULL,
+        CONSTRAINT document_chunks_allowed_roles_nonempty
+            CHECK (cardinality(allowed_roles) > 0),
         heading_path text NOT NULL,
         content text NOT NULL,
         embedding vector(384) NOT NULL,
@@ -51,12 +71,12 @@ SCHEMA_STATEMENTS = (
     )
     """,
     """
-    CREATE INDEX IF NOT EXISTS runbook_chunks_search_idx
-        ON runbook_chunks USING gin (search_vector)
+    CREATE INDEX IF NOT EXISTS document_chunks_search_idx
+        ON document_chunks USING gin (search_vector)
     """,
     """
-    CREATE INDEX IF NOT EXISTS runbook_chunks_embedding_idx
-        ON runbook_chunks USING hnsw (embedding vector_cosine_ops)
+    CREATE INDEX IF NOT EXISTS document_chunks_embedding_idx
+        ON document_chunks USING hnsw (embedding vector_cosine_ops)
     """,
 )
 
@@ -72,9 +92,9 @@ keyword_scored AS (
                WHERE c.content ILIKE '%%' || code || '%%'
            ) THEN 1 ELSE 0 END AS exact_code_match,
            ts_rank_cd(c.search_vector, i.tsquery) AS text_rank
-    FROM runbook_chunks AS c
+    FROM document_chunks AS c
     CROSS JOIN input AS i
-    WHERE c.required_role = %(role)s
+    WHERE %(role)s = ANY(c.allowed_roles)
       AND (
           c.search_vector @@ i.tsquery
           OR EXISTS (
@@ -98,8 +118,8 @@ vector_ranked AS (
            row_number() OVER (
                ORDER BY c.embedding <=> %(embedding)s, c.chunk_id
            ) AS rank
-    FROM runbook_chunks AS c
-    WHERE c.required_role = %(role)s
+    FROM document_chunks AS c
+    WHERE %(role)s = ANY(c.allowed_roles)
     ORDER BY c.embedding <=> %(embedding)s, c.chunk_id
     LIMIT %(candidate_limit)s
 ),
@@ -112,10 +132,10 @@ fused AS (
     ) AS ranked_results
     GROUP BY chunk_id
 )
-SELECT c.doc_id, c.service_name, c.required_role, c.heading_path,
+SELECT c.doc_id, c.service_name, c.allowed_roles, c.heading_path,
        c.content, fused.score
 FROM fused
-JOIN runbook_chunks AS c USING (chunk_id)
+JOIN document_chunks AS c USING (chunk_id)
 ORDER BY fused.score DESC, c.chunk_id
 LIMIT %(top_k)s
 """
@@ -125,13 +145,23 @@ LIMIT %(top_k)s
 class Chunk:
     doc_id: str
     service_name: str
-    required_role: str
+    allowed_roles: tuple[str, ...]
     heading_path: str
     content: str
 
 
 @lru_cache(maxsize=1)
-def get_embedding_model() -> SentenceTransformer:
+def get_embedding_model() -> Any:
+    try:
+        from sentence_transformers import SentenceTransformer
+    except ModuleNotFoundError as error:
+        if error.name != "sentence_transformers":
+            raise
+        raise RuntimeError(
+            "Missing sentence-transformers. Install "
+            "`day15_16_hybrid_search_rag/requirements.txt` with pip."
+        ) from error
+
     return SentenceTransformer(EMBEDDING_MODEL)
 
 
@@ -140,9 +170,12 @@ def chunk_markdown(
     *,
     doc_id: str,
     service_name: str,
-    required_role: str,
+    allowed_roles: tuple[str, ...],
 ) -> list[Chunk]:
     """Split on H1/H2 boundaries, retaining the current H1/H2 hierarchy."""
+    if not allowed_roles or any(not role.strip() for role in allowed_roles):
+        raise ValueError("At least one non-empty allowed role is required.")
+
     chunks: list[Chunk] = []
     heading_one = ""
     heading_two = ""
@@ -157,7 +190,7 @@ def chunk_markdown(
             Chunk(
                 doc_id=doc_id,
                 service_name=service_name,
-                required_role=required_role,
+                allowed_roles=allowed_roles,
                 heading_path=heading_path,
                 content=body,
             )
@@ -185,6 +218,8 @@ def connect_database(*, register_vector_type: bool = True) -> psycopg.Connection
         raise RuntimeError("Set DATABASE_URL to your Neon or Supabase Postgres URL.")
     connection = psycopg.connect(database_url)
     if register_vector_type:
+        from pgvector.psycopg import register_vector
+
         register_vector(connection)
     return connection
 
@@ -201,13 +236,13 @@ def ingest_markdown(
     *,
     doc_id: str,
     service_name: str,
-    required_role: str,
+    allowed_roles: tuple[str, ...],
 ) -> int:
     chunks = chunk_markdown(
         path.read_text(encoding="utf-8"),
         doc_id=doc_id,
         service_name=service_name,
-        required_role=required_role,
+        allowed_roles=allowed_roles,
     )
     if not chunks:
         raise ValueError(f"No non-empty Markdown sections found in {path}.")
@@ -216,21 +251,22 @@ def ingest_markdown(
         [f"{chunk.heading_path}\n{chunk.content}" for chunk in chunks],
         normalize_embeddings=True,
     )
+    from pgvector import Vector
 
     with connect_database() as connection:
         with connection.cursor() as cursor:
-            cursor.execute("DELETE FROM runbook_chunks WHERE doc_id = %s", (doc_id,))
+            cursor.execute("DELETE FROM document_chunks WHERE doc_id = %s", (doc_id,))
             cursor.executemany(
                 """
-                INSERT INTO runbook_chunks
-                    (doc_id, service_name, required_role, heading_path, content, embedding)
+                INSERT INTO document_chunks
+                    (doc_id, service_name, allowed_roles, heading_path, content, embedding)
                 VALUES (%s, %s, %s, %s, %s, %s)
                 """,
                 [
                     (
                         chunk.doc_id,
                         chunk.service_name,
-                        chunk.required_role,
+                        list(chunk.allowed_roles),
                         chunk.heading_path,
                         chunk.content,
                         Vector(embedding.tolist()),
@@ -241,8 +277,14 @@ def ingest_markdown(
     return len(chunks)
 
 
-def retrieve_chunks(query: str, role: str) -> list[dict[str, Any]]:
+def retrieve_chunks(query: str, verified_role: str) -> list[dict[str, Any]]:
+    """Retrieve chunks visible to a role extracted from verified JWT claims."""
+    if not verified_role or not verified_role.strip():
+        raise ValueError("A role from verified JWT claims is required.")
+
     error_codes = sorted(set(re.findall(r"\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b", query)))
+    from pgvector import Vector
+
     query_embedding = Vector(
         get_embedding_model().encode(query, normalize_embeddings=True).tolist()
     )
@@ -253,7 +295,7 @@ def retrieve_chunks(query: str, role: str) -> list[dict[str, Any]]:
                 {
                     "query": query,
                     "error_codes": error_codes,
-                    "role": role,
+                    "role": verified_role,
                     "embedding": query_embedding,
                     "candidate_limit": RETRIEVAL_CANDIDATES,
                     "rrf_k": RRF_K,
@@ -264,16 +306,22 @@ def retrieve_chunks(query: str, role: str) -> list[dict[str, Any]]:
             return [dict(zip(columns, row, strict=True)) for row in cursor.fetchall()]
 
 
-def answer_query(query: str, role: str) -> str:
-    chunks = retrieve_chunks(query, role)
+def answer_query(query: str, verified_role: str) -> str:
+    from day17_rbac_pii_redaction.pii_redaction_guardrail import scrub_enterprise_pii
+
+    clean_query, _ = scrub_enterprise_pii(query)
+    chunks = retrieve_chunks(clean_query, verified_role)
     if not chunks:
         return "No matching runbook chunks are available for this role."
+
+    from groq import Groq
 
     context = "\n\n".join(
         f"[{chunk['service_name']} / {chunk['doc_id']} / "
         f"{chunk['heading_path']}]\n{chunk['content']}"
         for chunk in chunks
     )
+    clean_context, _ = scrub_enterprise_pii(context)
     client = Groq()  # Reads GROQ_API_KEY from the environment.
     response = client.chat.completions.create(
         model=GROQ_MODEL,
@@ -289,7 +337,9 @@ def answer_query(query: str, role: str) -> str:
             },
             {
                 "role": "user",
-                "content": f"Runbook context:\n{context}\n\nQuestion: {query}",
+                "content": (
+                    f"Runbook context:\n{clean_context}\n\nQuestion: {clean_query}"
+                ),
             },
         ],
     )
@@ -308,11 +358,21 @@ def main() -> None:
     ingest_parser.add_argument("path", type=Path)
     ingest_parser.add_argument("--doc-id", required=True)
     ingest_parser.add_argument("--service-name", required=True)
-    ingest_parser.add_argument("--required-role", required=True)
+    ingest_parser.add_argument(
+        "--allowed-role",
+        action="append",
+        dest="allowed_roles",
+        required=True,
+        help="Role allowed to retrieve this document; repeat for additional roles.",
+    )
 
     ask_parser = commands.add_parser("ask", help="Search chunks and ask Groq.")
     ask_parser.add_argument("query")
-    ask_parser.add_argument("--role", required=True)
+    ask_parser.add_argument(
+        "--role",
+        required=True,
+        help="Role extracted from the caller's verified Day 4 JWT claims.",
+    )
     args = parser.parse_args()
 
     if args.command == "init":
@@ -323,11 +383,11 @@ def main() -> None:
             args.path,
             doc_id=args.doc_id,
             service_name=args.service_name,
-            required_role=args.required_role,
+            allowed_roles=tuple(args.allowed_roles),
         )
         print(f"Ingested {count} chunks from {args.path}.")
     else:
-        print(answer_query(args.query, role=args.role))
+        print(answer_query(args.query, verified_role=args.role))
 
 
 if __name__ == "__main__":

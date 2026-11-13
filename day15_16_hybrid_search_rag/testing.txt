@@ -1,11 +1,16 @@
-pip install "psycopg[binary]" pgvector sentence-transformers groq
+python -m pip install -r day15_16_hybrid_search_rag/requirements.txt
 export DATABASE_URL="..."
 export GROQ_API_KEY="..."
 
-python hybrid_rag_rrf.py init
-python hybrid_rag_rrf.py ingest paymentrunbook.md   --doc-id payments-v1 --
-service-name payments --required-role ops_viewer
-python hybrid_rag_rrf.py ask "How do I fix ERR_SSL_09?" --role ops_viewer
+python -m day15_16_hybrid_search_rag.hybrid_rag_rrf init
+python -m day15_16_hybrid_search_rag.hybrid_rag_rrf ingest \
+  day15_16_hybrid_search_rag/paymentrunbook.md --doc-id payments-v1 \
+  --service-name payments --allowed-role ops_viewer
+python -m day15_16_hybrid_search_rag.hybrid_rag_rrf ask \
+  "How do I fix ERR_SSL_09?" --role ops_viewer
+
+# In an application, pass the role from day4_oidc_and_rbac.get_current_user_claims;
+# the standalone --role option is only for local demonstrations.
 
 -----------
 

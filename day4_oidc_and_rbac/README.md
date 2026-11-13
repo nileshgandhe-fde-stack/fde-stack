@@ -36,7 +36,7 @@ Failure modes include:
 - missing or non-Bearer credentials
 
 ### Role enforcement
-`require_roles` is a reusable dependency factory that checks whether the caller has any role required by the route. If the user lacks the needed permission, the API returns a `403 Forbidden` response.
+`get_verified_roles` extracts role strings from claims returned by `get_current_user_claims`. `require_roles` is a reusable dependency factory that checks whether the caller has any role required by the route. If the user lacks the needed permission, the API returns a `403 Forbidden` response.
 
 This pattern allows route-level RBAC without duplicating logic in every endpoint.
 

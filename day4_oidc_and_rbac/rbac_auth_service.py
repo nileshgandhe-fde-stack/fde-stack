@@ -24,19 +24,33 @@ def issue_test_jwt(username: str = "nilesh.fde", roles: List[str] = ["ops_viewer
     token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGO)
     return {"access_token": token, "token_type": "Bearer", "assigned_roles": roles}
 
-def get_current_user_claims(creds: HTTPAuthorizationCredentials = Security(security)) -> dict:
+def verify_access_token(token: str) -> dict:
     try:
-        payload = jwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALGO])
-        return payload
+        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="JWT token expired")
     except jwt.InvalidTokenError as err:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid JWT: {err}")
 
+def get_current_user_claims(creds: HTTPAuthorizationCredentials = Security(security)) -> dict:
+    return verify_access_token(creds.credentials)
+
+def get_verified_roles(claims: dict) -> List[str]:
+    realm_access = claims.get("realm_access")
+    roles = realm_access.get("roles") if isinstance(realm_access, dict) else None
+    if not isinstance(roles, list) or not all(
+        isinstance(role, str) and role for role in roles
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="JWT does not contain valid realm roles",
+        )
+    return roles
+
 def require_roles(allowed_roles: List[str]):
     """Reusable FastAPI dependency factory for route-level RBAC enforcement."""
     def role_checker(claims: dict = Depends(get_current_user_claims)):
-        user_roles = claims.get("realm_access", {}).get("roles", [])
+        user_roles = get_verified_roles(claims)
         if not any(r in allowed_roles for r in user_roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
