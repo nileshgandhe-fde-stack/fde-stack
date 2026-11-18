@@ -1,6 +1,3 @@
-####  Following exercise is completed on open sandbox killercoda ### 
-`zarf-package-aegisops-airgap-bundle-amd64-1.0.0.tar.zst` bundled generated using following steps and deployed successfully
-
 ## Air-Gapped Deployment & Zero-Trust Hardening (`aegisops-enclave`)
 
 This repository packages the **AegisOps** stack (`ui`, `api`, and `postgres`) into a self-contained, offline-capable `.tar.zst` artifact using **Zarf**, and enforces strict zero-trust pod-to-pod isolation inside **Kubernetes (K8s)** via `NetworkPolicy` manifests.
@@ -110,11 +107,13 @@ kubectl get pods,networkpolicies -n aegisops-enclave
 ```
 e.g.
 NAME                                READY   STATUS    RESTARTS   AGE
-pod/aegisops-api-569bcdb98b-f96hr   1/1     Running   0          70s
-pod/aegisops-api-569bcdb98b-m5pk8   1/1     Running   0          70s
+pod/aegisops-api-58cdfbfd4b-bqtlr   1/1     Running   0          36s
+pod/aegisops-ui-68998b89f-bvsss     1/1     Running   0          36s
 
-NAME                                               POD-SELECTOR   AGE
-networkpolicy.networking.k8s.io/default-deny-all   <none>         70s
+NAME                                                POD-SELECTOR   AGE
+networkpolicy.networking.k8s.io/allow-api-traffic   app=api        37s
+networkpolicy.networking.k8s.io/allow-ui-egress     app=ui         37s
+networkpolicy.networking.k8s.io/default-deny-all    <none>         37s
 
 ---
 
