@@ -12,5 +12,7 @@ components:
         namespace: aegisops-enclave
         files:
           - k8s-hardened-byoc.yaml
-    images:
+    images: # added required images for BYOC & Air-Gapped K8s bundle
       - python:3.11-slim
+      - postgres:15-alpine
+      - nginx:alpine
