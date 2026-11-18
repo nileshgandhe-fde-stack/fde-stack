@@ -14,3 +14,5 @@ components:
           - k8s-hardened-byoc.yaml
     images:
       - python:3.11-slim
+      - postgres:15-alpine
+      - nginx:alpine

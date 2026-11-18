@@ -100,3 +100,113 @@ spec:
       ports:
         - protocol: TCP
           port: 5432
+
+# 1. Postgres Database (Port 5432)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aegisops-postgres
+  namespace: aegisops-enclave
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: aegisops
+            - name: POSTGRES_PASSWORD
+              value: enclavepass123
+            - name: POSTGRES_DB
+              value: aegisopsdb
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: aegisops-postgres
+  namespace: aegisops-enclave
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+# 2. API Backend (Port 8000)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aegisops-api
+  namespace: aegisops-enclave
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+        - name: api
+          image: python:3.11-slim
+          command: ["python3", "-m", "http.server", "8000"]
+          ports:
+            - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aegisops-api
+  namespace: aegisops-enclave
+spec:
+  selector:
+    app: api
+  ports:
+    - port: 8000
+      targetPort: 8000
+---
+# 3. UI Frontend (Port 80)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aegisops-ui
+  namespace: aegisops-enclave
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ui
+  template:
+    metadata:
+      labels:
+        app: ui
+    spec:
+      containers:
+        - name: ui
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aegisops-ui
+  namespace: aegisops-enclave
+spec:
+  selector:
+    app: ui
+  ports:
+    - port: 80
+      targetPort: 80
