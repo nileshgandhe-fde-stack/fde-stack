@@ -1,89 +1,53 @@
-# AegisOps Capstone Storage Demo
+# AegisOps FDE Platform
 
-This folder contains `aegis_storage.py`, a small Python demonstration of tenant
-SLA analytics and role-filtered runbook search. It uses an in-memory DuckDB
-database with seeded sample data; it does not connect to a live service or
-persist data between runs.
+A role-aware incident assistant combining read-only DuckDB SLA metrics,
+Markdown runbooks, and (when configured) redacted post-mortems from Neon
+pgvector. The FastAPI backend builds its incident-analysis workflow with
+LangGraph; the Streamlit UI includes role switching and an SRE control plane.
 
-## Requirements and running
+## Local demo
 
-Python 3 and the `duckdb` package are required. From the repository root, run:
+Install the project and test dependencies, then generate seed data and load the
+local metrics database:
 
-```bash
-python3 day22_23_aegisops-capstone/aegis_storage.py
+```sh
+python -m pip install -e ".[test]"
+python data_seed/seed_enterprise_data.py
+python -c "from aegisops.ingestion import DuckDBSlaStore; store = DuckDBSlaStore('data_seed/generated/aegisops.duckdb'); store.load_csv('data_seed/generated/tenant_sla.csv'); store.close()"
 ```
 
-The script prints an SLA summary, performs a sample runbook search as
-`ops_viewer`, and displays the PII-redaction and RBAC-block counters.
+Create a `.env` file in the repository root with your local settings. Keep the
+file private; it is ignored by Git. Demo role issuance is disabled unless
+explicitly enabled:
 
-## `AegisOpsCoreEngine`
-
-Creating an engine opens a DuckDB in-memory connection, seeds the
-`tenant_sla_events` table and three governed runbooks, and initializes two
-counters:
-
-- `pii_redacted_total` counts email addresses and SSN-shaped values replaced by
-  the PII scrubber.
-- `rbac_blocks_total` counts runbooks denied to the supplied caller role during
-  searches.
-
-### SLA analytics
-
-`query_sla_summary()` groups the five seeded incidents by tenant and returns a
-Pandas DataFrame with:
-
-- incident count and number of SLA breaches;
-- average MTTR in minutes, rounded to one decimal place;
-- peak recorded p95 latency in milliseconds.
-
-For the current sample data, the summary includes two breached incidents for
-`acme_health`, one for `globex_fin`, and none for `initech_supply`.
-
-### PII scrubbing and runbook search
-
-`scrub_pii(text)` replaces email-like strings with `<REDACTED_EMAIL>` and
-values matching the `NNN-NN-NNNN` pattern with `<REDACTED_SSN>`. The redaction
-counter increases for each match.
-
-`search_runbooks(query, caller_role)` scrubs and lowercases the query, then
-checks each runbook's `allowed_roles` before matching. A caller without
-permission cannot receive that runbook, and each denied runbook increments
-`rbac_blocks_total`. For permitted runbooks, a result is included if any
-whitespace-separated query token longer than two characters occurs in the
-runbook title or body (case-insensitive). The method returns a list of matching
-runbook dictionaries.
-
-The seeded roles demonstrate progressively restricted access:
-
-| Runbook | Allowed roles |
-| --- | --- |
-| `RB-101` — HL7 FHIR Gateway Connection Pool Exhaustion | `ops_viewer`, `sec_auditor`, `fde_admin` |
-| `RB-102` — SWIFT Wire API Mutual-TLS Certificate Rotation Runbook | `sec_auditor`, `fde_admin` |
-| `RB-999` — Executive-only SOC2 findings | `fde_admin` |
-
-## Example
-
-The script's sample search uses the `ops_viewer` role and a query containing
-HL7 and SOC2 terms, an email address, and an SSN-shaped value. The search
-returns the matching `RB-101` runbook, redacts two PII matches, and counts two
-runbooks blocked by role.
-
-You can also use the engine from Python:
-
-From this folder, start Python and use:
-
-```python
-from aegis_storage import AegisOpsCoreEngine
-
-engine = AegisOpsCoreEngine()
-summary = engine.query_sla_summary()
-runbooks = engine.search_runbooks("hl7 gateway", caller_role="ops_viewer")
+```sh
+JWT_SECRET=replace-with-a-private-random-secret-at-least-32-bytes-long
+DEMO_TOKEN_ISSUER_ENABLED=true
+OPENAI_API_KEY=your-openai-api-key
 ```
 
-## Scope and limitations
+Start the API from the repository root:
 
-This is an illustrative, local demo rather than a production security or
-storage layer. DuckDB data and counters exist only for the lifetime of the
-engine. PII detection covers only the two regular-expression patterns above,
-and `caller_role` is a method argument—not an authenticated identity or an
-authorization system.
+```sh
+PYTHONPATH=backend uvicorn --env-file .env aegisops.api:app --reload --port 8000
+```
+
+In another terminal, start the UI:
+
+```sh
+streamlit run ui/app.py
+```
+
+The demo issuer can mint all three demonstration roles and is not an identity
+provider. Keep it disabled outside a controlled, isolated demo. Before
+production, replace the demo HS256 issuer and validator with the organization's
+identity-provider integration and trusted signing keys. Point `AEGISOPS_API_URL`
+at the API if it is not at `http://localhost:8000`.
+
+To enable semantic post-mortem retrieval, set `POSTMORTEM_DATABASE_URL` to a
+read-only connection for the already-ingested, PII-redacted pgvector index and
+provide the embedding settings used during ingestion. The API combines these
+SRE-only results with local Markdown runbooks. The API's `/metrics` endpoint
+exports Prometheus metrics; restrict it to trusted monitoring networks.
+
+Run tests with `python -m pytest`.

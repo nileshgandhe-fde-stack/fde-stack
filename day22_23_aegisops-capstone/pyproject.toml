@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aegisops-fde-platform"
+version = "0.1.0"
+description = "AegisOps enterprise data ingestion platform"
+requires-python = ">=3.11"
+dependencies = [
+    "duckdb>=1.1",
+    "fastapi>=0.115",
+    "langgraph>=0.2",
+    "pgvector>=0.3",
+    "presidio-analyzer>=2.2",
+    "presidio-anonymizer>=2.2",
+    "prometheus-client>=0.20",
+    "prometheus-fastapi-instrumentator>=7.0",
+    "psycopg[binary]>=3.2",
+    "PyJWT>=2.9",
+    "requests>=2.31",
+    "sqlglot>=26.0",
+    "streamlit>=1.40",
+    "uvicorn[standard]>=0.32",
+]
+
+[project.optional-dependencies]
+test = ["httpx>=0.27", "pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["backend"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+pythonpath = [".", "backend"]

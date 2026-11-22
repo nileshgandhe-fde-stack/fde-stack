@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+backend/aegisops/api.py
+backend/aegisops/assistant.py
+backend/aegisops/ingestion.py
+backend/aegisops/metrics.py
+backend/aegisops_fde_platform.egg-info/PKG-INFO
+backend/aegisops_fde_platform.egg-info/SOURCES.txt
+backend/aegisops_fde_platform.egg-info/dependency_links.txt
+backend/aegisops_fde_platform.egg-info/requires.txt
+backend/aegisops_fde_platform.egg-info/top_level.txt
+backend/tests/test_assistant.py
+backend/tests/test_ingestion.py
