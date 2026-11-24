@@ -1,4 +1,7 @@
+# day 22-23: Capstone Phase 1: 'AegisOps' Ingestion & Storage Core 
+# day 24-25: Capstone Phase 2: Governed Copilot API & SRE Telemetry
 # AegisOps FDE Platform
+
 
 A role-aware incident assistant combining read-only DuckDB SLA metrics,
 Markdown runbooks, and (when configured) redacted post-mortems from Neon
