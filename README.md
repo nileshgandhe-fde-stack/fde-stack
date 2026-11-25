@@ -92,19 +92,19 @@ provider egress for your own environment.
 
 | Days | Focus | Project |
 | --- | --- | --- |
-| 1–2 | API design and ingestion | [FastAPI ingestion service](day1_2_fastapi) |
-| 3 | Resilience patterns | [Flaky legacy integration](day3_flaky_legacy) |
-| 4 | Identity and authorization | [OIDC and RBAC gateway](day4_oidc_and_rbac) |
-| 5–7 | Operations UI | [Operations console](day5_7_ops_ui) |
-| 8–9 | Data quality and analytics | [DuckDB cleanup workflow](day8_9_data_analytics) |
-| 10 | Warehouse modelling | [dbt staging models](day10_warehouse_modelling) |
-| 11–12 | Streaming reliability | [Kafka dead-letter queue](day11_12_kafka_dlq) |
-| 13–14 | Cloud infrastructure and ingestion | [LocalStack, SQS, and Terraform](day13_14_awslocal_tf) |
-| 15–16 | Retrieval-augmented generation | [Hybrid search and RAG](day15_16_hybrid_search_rag) |
-| 17 | PII and access control | [RBAC and PII redaction](day17_rbac_pii_redaction) |
-| 18–19 | Agent workflows and observability | [LangGraph, OpenTelemetry, and LLM evaluation](day18_19_langraph_otel_llm) |
-| 20–21 | Customer-controlled deployment | [Air-gapped BYOC on Kubernetes](day20_21_airgapp_byoc_k8ns) |
-| 22–23 | Capstone | [AegisOps incident assistant](day22_23_aegisops-capstone) |
+| 1–2 | API design and ingestion | [FastAPI ingestion service](https://github.com/nileshgandhe-fde-stack/fde-stack/tree/main/day1_2_fastapi) |
+| 3 | Resilience patterns | [Flaky legacy integration](https://github.com/nileshgandhe-fde-stack/fde-stack/tree/main/day3_flaky_legacy) |
+| 4 | Identity and authorization | [OIDC and RBAC gateway](https://github.com/nileshgandhe-fde-stack/fde-stack/tree/main/day4_oidc_and_rbac) |
+| 5–7 | Operations UI | [Operations console](https://github.com/nileshgandhe-fde-stack/fde-stack/tree/main/day5_7_ops_ui) |
+| 8–9 | Data quality and analytics | [DuckDB cleanup workflow](https://github.com/nileshgandhe-fde-stack/fde-stack/tree/main/day8_9_data_analytics) |
+| 10 | Warehouse modelling | [dbt staging models](https://github.com/nileshgandhe-fde-stack/fde-stack/tree/main/day10_warehouse_modelling) |
+| 11–12 | Streaming reliability | [Kafka dead-letter queue](https://github.com/nileshgandhe-fde-stack/fde-stack/tree/main/day11_12_kafka_dlq) |
+| 13–14 | Cloud infrastructure and ingestion | [LocalStack, SQS, and Terraform](https://github.com/nileshgandhe-fde-stack/fde-stack/tree/main/day13_14_awslocal_tf) |
+| 15–16 | Retrieval-augmented generation | [Hybrid search and RAG](https://github.com/nileshgandhe-fde-stack/fde-stack/tree/main/day15_16_hybrid_search_rag) |
+| 17 | PII and access control | [RBAC and PII redaction](https://github.com/nileshgandhe-fde-stack/fde-stack/tree/main/day17_rbac_pii_redaction) |
+| 18–19 | Agent workflows and observability | [LangGraph, OpenTelemetry, and LLM evaluation](https://github.com/nileshgandhe-fde-stack/fde-stack/tree/main/day18_19_langraph_otel_llm) |
+| 20–21 | Customer-controlled deployment | [Air-gapped BYOC on Kubernetes](https://github.com/nileshgandhe-fde-stack/fde-stack/tree/main/day20_21_airgapp_byoc_k8ns) |
+| 22–23 | Capstone | [AegisOps incident assistant](https://github.com/nileshgandhe-fde-stack/fde-stack/tree/main/day22_23_aegisops-capstone) |
 
 Each project folder includes a README with its purpose, implementation, and
 local usage notes. Generated outputs, caches, and virtual environments are not
