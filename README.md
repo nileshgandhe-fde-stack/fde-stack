@@ -106,7 +106,9 @@ provider egress for your own environment.
 | 20–21 | Customer-controlled deployment | [Air-gapped BYOC on Kubernetes](day20_21_airgapp_byoc_k8ns) |
 | 22–23 | Capstone | [AegisOps incident assistant](day22_23_aegisops-capstone) |
 
-Each project includes its own README with setup and implementation details.
+Each project folder includes a README with its purpose, implementation, and
+local usage notes. Generated outputs, caches, and virtual environments are not
+documented as source folders.
 
 ## Run the flagship project
 

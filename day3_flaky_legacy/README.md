@@ -1,7 +1,9 @@
 # Day 3: Flaky Legacy Integration and Resilience Patterns
 
 ## Overview
-This module models a legacy enterprise dependency that is unreliable under real-world conditions. It demonstrates how to protect a client application from temporary outages, throttling, and noisy upstream failures using retries, jitter, and circuit breaking.
+This module models a flaky legacy claims endpoint and an asynchronous client.
+It demonstrates retries with randomized exponential backoff and a simple
+circuit-breaker state machine.
 
 ## Business purpose
 In enterprise systems, internal or third-party dependencies often fail intermittently. This example simulates a legacy ERP system that sometimes returns:
@@ -43,6 +45,9 @@ The asynchronous client uses:
 - connection limits for resource control
 - a timeout for request safety
 
+The upstream is an `httpx.MockTransport` handler in this process; this example
+does not call a real ERP service or require a broker or network service.
+
 ## Failure handling strategy
 When a page fetch receives a status code such as `429`, `500`, `502`, `503`, or `504`, the code:
 1. records a failure in the circuit breaker
@@ -64,10 +69,18 @@ The script prints output similar to:
 - `🟡 [CIRCUIT BREAKER] Moving to HALF_OPEN probe state...`
 
 ## Run it
+
+Install the runtime dependencies (`httpx` and `tenacity`) in the active Python
+environment, then run:
+
 ```bash
 cd day3_flaky_legacy
 python flaky_server_and_client.py
 ```
+
+The upstream response is randomized, so a run may end with an uncaught error
+after the retry budget is exhausted. There is no separate automated test suite
+in this folder.
 
 ## Best use cases
 - Resilience training for third-party APIs
