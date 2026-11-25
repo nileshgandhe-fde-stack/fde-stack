@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import io
+import json
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 
 import duckdb
 import pytest
@@ -215,6 +217,37 @@ def test_sql_agent_rejects_queries_outside_sla_table(tmp_path: Path) -> None:
         raise AssertionError("Unsafe SQL was not rejected")
 
 
+def test_sql_agent_repairs_rejected_query_once(tmp_path: Path) -> None:
+    database_path = tmp_path / "sla.duckdb"
+    _create_metrics_database(database_path)
+    runbooks = tmp_path / "runbooks"
+    runbooks.mkdir()
+    prompts: list[str] = []
+
+    class RepairingPlanner:
+        def complete(self, prompt: str) -> FakeCompletion:
+            prompts.append(prompt)
+            if "The previous query was rejected:" in prompt:
+                return FakeCompletion(
+                    "SELECT service, status FROM sla_metrics LIMIT 50"
+                )
+            if prompt.startswith("Write exactly one DuckDB SELECT"):
+                return FakeCompletion("SELECT * FROM other_table")
+            return FakeCompletion("Analysis complete.")
+
+    service = AskService(
+        chat=RepairingPlanner(),
+        retriever=MarkdownRetriever(runbooks),
+        database_path=database_path,
+    )
+
+    result = service.ask("show payments SLA", "tier1_support")
+
+    assert result["sql_query"] == "SELECT service, status FROM sla_metrics LIMIT 50"
+    assert result["sql_results"] == [{"service": "payments-api", "status": "breached"}]
+    assert "The previous query was rejected:" in prompts[1]
+
+
 def test_instrumented_chat_client_tracks_usage_and_cost() -> None:
     telemetry = Telemetry()
     client = InstrumentedChatClient(
@@ -240,6 +273,35 @@ def test_chat_client_includes_network_failure_reason(monkeypatch: pytest.MonkeyP
 
     with pytest.raises(LLMUnavailableError, match="Name or service not known"):
         client.complete("test prompt")
+
+
+def test_chat_client_retries_transient_service_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+
+    def fail_once_then_succeed(*args: object, **kwargs: object) -> io.BytesIO:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise HTTPError("https://example.invalid", 503, "Unavailable", None, None)
+        return io.BytesIO(
+            json.dumps(
+                {
+                    "choices": [{"message": {"content": "Recovered"}}],
+                    "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+                }
+            ).encode()
+        )
+
+    monkeypatch.setattr(aegisops.api, "urlopen", fail_once_then_succeed)
+    monkeypatch.setattr(aegisops.api.time, "sleep", lambda _: None)
+    client = OpenAICompatibleChatClient(
+        "test-key", "https://example.invalid/v1", "test-model"
+    )
+
+    assert client.complete("test prompt").content == "Recovered"
+    assert attempts == 2
 
 
 def test_circuit_breaker_opens_and_pii_redaction_is_counted() -> None:

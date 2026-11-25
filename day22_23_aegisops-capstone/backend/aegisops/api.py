@@ -126,32 +126,38 @@ class OpenAICompatibleChatClient:
     def complete(self, prompt: str) -> ChatCompletion:
         if not self._api_key:
             raise LLMUnavailableError("OPENAI_API_KEY is required for incident synthesis")
-        request = Request(
-            self._url,
-            data=json.dumps(
-                {
-                    "model": self._model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0,
-                }
-            ).encode("utf-8"),
-            headers={
-                "Authorization": f"Bearer {self._api_key}",
-                "Content-Type": "application/json",
-            },
-            method="POST",
-        )
-        try:
-            with urlopen(request, timeout=self._timeout_seconds) as response:
-                payload = json.load(response)
-        except HTTPError as error:
-            raise LLMUnavailableError(
-                f"LLM service returned HTTP {error.code}"
-            ) from error
-        except URLError as error:
-            raise LLMUnavailableError(
-                f"Could not reach the LLM service: {error.reason}"
-            ) from error
+        request_body = json.dumps(
+            {
+                "model": self._model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0,
+            }
+        ).encode("utf-8")
+        for attempt in range(2):
+            request = Request(
+                self._url,
+                data=request_body,
+                headers={
+                    "Authorization": f"Bearer {self._api_key}",
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            try:
+                with urlopen(request, timeout=self._timeout_seconds) as response:
+                    payload = json.load(response)
+                break
+            except HTTPError as error:
+                if error.code == 503 and attempt == 0:
+                    time.sleep(0.5)
+                    continue
+                raise LLMUnavailableError(
+                    f"LLM service returned HTTP {error.code}"
+                ) from error
+            except URLError as error:
+                raise LLMUnavailableError(
+                    f"Could not reach the LLM service: {error.reason}"
+                ) from error
         try:
             message = payload["choices"][0]["message"]["content"]
             usage = payload["usage"]

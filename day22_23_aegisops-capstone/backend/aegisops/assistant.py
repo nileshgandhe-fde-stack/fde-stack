@@ -296,11 +296,21 @@ class AskService:
             "Write exactly one DuckDB SELECT query for incident/SLA metrics. "
             "Use only the sla_metrics table and these columns: sla_id, measured_at, "
             "tenant_id, service, region, monthly_target_pct, observed_pct, request_count, "
-            "error_count, status, source_note. Do not use any other table, function, or "
-            "statement. Add LIMIT 50. Return SQL only.\n"
+            "error_count, status, source_note. Use no other table or columns and only "
+            "these functions if needed: AVG, COUNT, MAX, MIN, ROUND, SUM. Do not use "
+            "any other statement. Add LIMIT 50. Return SQL only.\n"
             f"Question: {state['question']}"
         )
-        sql = validate_metrics_query(self._chat.complete(prompt).content)
+        generated_sql = self._chat.complete(prompt).content
+        try:
+            sql = validate_metrics_query(generated_sql)
+        except UnsafeQueryError as error:
+            repair_prompt = (
+                f"{prompt}\nThe previous query was rejected: {error}. "
+                "Generate a corrected query that follows every restriction. "
+                "Return SQL only."
+            )
+            sql = validate_metrics_query(self._chat.complete(repair_prompt).content)
         with duckdb.connect(self._database_path, read_only=True) as connection:
             cursor = connection.execute(sql)
             columns = [column[0] for column in cursor.description or ()]
