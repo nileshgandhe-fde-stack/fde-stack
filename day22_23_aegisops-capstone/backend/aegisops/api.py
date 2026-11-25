@@ -149,7 +149,9 @@ class OpenAICompatibleChatClient:
                 f"LLM service returned HTTP {error.code}"
             ) from error
         except URLError as error:
-            raise LLMUnavailableError("Could not reach the LLM service") from error
+            raise LLMUnavailableError(
+                f"Could not reach the LLM service: {error.reason}"
+            ) from error
         try:
             message = payload["choices"][0]["message"]["content"]
             usage = payload["usage"]
