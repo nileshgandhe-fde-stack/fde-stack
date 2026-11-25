@@ -12,6 +12,15 @@ post-mortems, role-aware access, and operational telemetry. The surrounding
 projects build up the engineering patterns behind it as focused, runnable
 exercises.
 
+# “Ask about an incident ?” 
+In “Ask about an incident,” ask natural-language questions about SLA metrics and operational runbooks. For example:
+
+1. “What likely caused the elevated 5xx rate for payments-api? Separate measured evidence from possible causes.”
+2. “How is identity-service performing against its SLA, and what metrics support that?”
+3. “Which runbook steps should we follow for a retry storm?”
+4. “What should we check before increasing database connection-pool limits?”
+5. “What recovery signals should we monitor after scaling workers?”
+
 ## System architecture
 
 ```mermaid
