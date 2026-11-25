@@ -3,7 +3,7 @@
 AegisOps is a role-aware incident assistant for operational teams. Its FastAPI
 backend queries SLA data from DuckDB in read-only mode, retrieves Markdown
 runbooks, and can retrieve redacted post-mortems from Neon pgvector. An
-An OpenAI-compatible chat service powers analysis; embeddings enable optional
+OpenAI-compatible chat service powers analysis; embeddings enable optional
 semantic retrieval. The Streamlit UI provides incident analysis, a demo role
 switcher, and an SRE control plane.
 
@@ -56,9 +56,10 @@ streamlit run ui/app.py
 ```
 
 The UI defaults to `http://localhost:8000`. Set `AEGISOPS_API_URL` if the API
-uses another address. For local runbook retrieval, the repository's runbooks
-are in `data_seed/runbook`; set `RUNBOOKS_DIR=data_seed/runbook` if using that
-directory.
+uses another address. The API's default `RUNBOOKS_DIR` is
+`data_seed/runbooks`, while the repository's included example files are in the
+singular `data_seed/runbook` directory; set `RUNBOOKS_DIR=data_seed/runbook`
+to use those examples.
 
 The demo JWT issuer is not an identity provider. Keep it disabled except for a
 controlled demo; use an organization's identity provider and trusted signing

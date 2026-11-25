@@ -48,6 +48,12 @@ The example follows a simple policy model:
 
 A route requiring any of the allowed roles is accepted only when the token contains those claims. If the user lacks the necessary permissions, the request is rejected with a clear RBAC policy error.
 
+This is a learning demo, not production authentication: the HS256 signing
+secret is hard-coded in `rbac_auth_service.py`, and the mock token endpoint lets
+callers request their own roles. Do not expose it or reuse the secret. Use a
+trusted identity provider, managed signing keys, and an independently enforced
+authorization policy in a real deployment.
+
 ## Request flow
 1. The client requests a token from `/auth/mock-idp-token` with a username and role list.
 2. The server creates a JWT with the user identity and realm roles.
@@ -71,8 +77,11 @@ From the repository root:
 
 ```bash
 cd day4_oidc_and_rbac
+python -m pip install fastapi "uvicorn[standard]" PyJWT
 uvicorn rbac_auth_service:app --reload
 ```
+
+The demo has no persistent user store or automated tests in this folder.
 
 ## Best use cases
 - API gateway authorization demos

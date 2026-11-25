@@ -1,9 +1,0 @@
-{
-    "workbench.colorTheme": "GitHub Dark",
-    "workbench.preferredLightColorTheme": "Dark Modern",
-    "window.autoDetectColorScheme": true,
-    "workbench.preferredDarkColorTheme": "Ayu Dark Bordered",
-    "terminal.integrated.fontFamily": "Consolas, 'Courier New', monospace, jetbrainsmono, 'Fira Code', 'Cascadia Code', 'Source Code Pro', 'Ubuntu Mono', 'Operator Mono', 'Hack', 'Monaco', 'Menlo', 'Inconsolata', 'Droid Sans Mono', 'Liberation Mono', monospace",
-    "terminal.integrated.fontLigatures": "calt",
-    "python.terminal.useEnvFile": true
-}

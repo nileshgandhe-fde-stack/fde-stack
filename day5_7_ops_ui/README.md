@@ -1,16 +1,20 @@
 # Day 5-7: Operations UI and Triage Console
 
 ## Overview
-This module provides the operational dashboard for the FDE stack. It is a lightweight Streamlit application that presents a role-aware incident view for enterprise operators, security analysts, and administrators. The interface is designed to simulate an internal operations console for triaging active incidents and executing remediation workflows.
+This module provides a lightweight Streamlit dashboard with sample incident
+data, tenant filtering, operational KPIs, and a simulated remediation action.
+It is a standalone UI exercise and does not connect to the APIs in other folders.
 
 ## Business purpose
 In real enterprise environments, operations teams need a single place to:
-- understand live incident health
+- review incident health
 - filter by tenant and severity
 - see key SLAs and latency indicators
-- trigger controlled remediation actions according to RBAC policy
+- see whether a remediation action is available to their role
 
-The dashboard acts as the human-facing layer above the backend automation and security patterns demonstrated in the other modules.
+This sample uses in-memory data and local role selection to demonstrate the
+operator workflow; it is not connected to backend automation or security
+services.
 
 ## Key components
 
@@ -34,7 +38,8 @@ It also provides tenant filters so the console can focus on a subset of client e
 - `globex_fin`
 - `initech_erp`
 
-This simulates identity-aware operational access without a full authentication integration.
+The selected role is only local UI state. It is not a JWT, does not call the
+Day 4 gateway, and is not an authorization boundary.
 
 ### Incident telemetry model
 The dashboard reads a sample dataset stored in-memory as a Pandas DataFrame. Each row includes:
@@ -56,24 +61,30 @@ The dashboard renders operational summary cards for:
 
 These numbers provide quick operators’ context before action is taken.
 
-### Runbook execution
-The secondary panel allows a selected incident to be processed via an automated remediation workflow. The key security control is role enforcement:
-- only `fde_admin` may trigger state-changing actions
-- non-admin roles receive a `403 Forbidden`-style warning in the UI
+### Simulated remediation
+The secondary panel simulates processing a selected incident. The UI displays
+a warning for non-admin roles and a success message for `fde_admin`; it does
+not execute a real runbook or record an audit event. This UI-only check is not
+a security control.
 
-This mirrors the RBAC model used in the earlier security module and demonstrates operational policy enforcement in a real UI workflow.
+The UI displays a `403 Forbidden`-style warning unless the selected role is
+`fde_admin`; selecting that role only triggers the simulated success path.
+
+They illustrate how a role-aware workflow might be presented to an operator.
 
 ## Request / interaction flow
-1. The operator chooses a role and tenant scope in the sidebar.
+1. The operator chooses a simulated role and tenant scope in the sidebar.
 2. The application filters the incident queue based on the tenant selection.
 3. KPI cards update to reflect the filtered workload.
 4. The operator selects an incident and triggers a remediation workflow.
 5. If the user is not an admin, the system blocks the action and shows an access error.
-6. If the user is an admin, the workflow executes and displays a success message.
+6. If the selected role is `fde_admin`, the UI waits briefly and displays a
+   simulated success message.
 
 ## Example UI behavior
-- `ops_viewer` can inspect the incident queue but cannot trigger remediation
-- `fde_admin` can execute runbooks and complete workflow actions
+- `ops_viewer` can inspect the sample incident queue and sees a warning if the
+  remediation button is used
+- `fde_admin` sees the simulated remediation success message
 - filtered data updates instantly as the operator adjusts the tenant lens
 
 ## Runtime configuration
@@ -102,4 +113,5 @@ http://localhost:8501
 - incident response simulation and runbook demos
 
 ## Notes
-This module is intentionally lightweight and intentionally mock-driven. It demonstrates the structure of a modern operational dashboard without needing a live backend or production telemetry stack.
+This module is intentionally mock-driven. It demonstrates dashboard layout
+and interaction patterns without a live backend or production telemetry stack.

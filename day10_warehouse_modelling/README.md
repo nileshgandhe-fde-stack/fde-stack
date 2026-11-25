@@ -51,6 +51,14 @@ The schema file `models/staging/schema.yml` defines:
 
 These tests protect the raw-to-staging contract and validate that the transformed model stays trustworthy.
 
+The project expects dbt Core and the `dbt-duckdb` adapter, plus a local dbt
+profile named `day10_warehouse_modelling` that points at DuckDB. Profile
+credentials live outside this folder (normally in `~/.dbt/profiles.yml`).
+The repository does not include that profile.
+
+Install the dbt packages with `python -m pip install dbt-core dbt-duckdb`
+before running the commands below.
+
 ## Transformation flow
 1. Raw seed data is loaded into DuckDB.
 2. The staging model reads from the `legacy_erp.raw_claims` source.
@@ -70,15 +78,22 @@ The staging model produces rows with:
 From the project directory:
 
 ```bash
+dbt seed --profiles-dir ~/.dbt
 dbt build --profiles-dir ~/.dbt
 ```
 
-You can also run the build in two explicit phases:
+`dbt build` runs the seed/model build and the declared tests. To run individual
+phases:
 
 ```bash
 dbt compile --profiles-dir ~/.dbt
 dbt test --profiles-dir ~/.dbt
 ```
+
+The staging model reads the `legacy_erp.raw_claims` source declared in
+`models/staging/schema.yml`; configure or load that source in the selected
+DuckDB profile before running the model. The checked-in `seeds/raw_claims.csv`
+is a seed file, not the declared raw source table.
 
 ## Best use cases
 - staging-layer design for warehouse pipelines

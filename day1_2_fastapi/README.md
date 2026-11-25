@@ -1,84 +1,106 @@
-# Day 1-2: FastAPI Ingestion API
+# Day 1–2: FastAPI Incident Ingestion
 
 ## Overview
-This module demonstrates an enterprise-grade ingestion service built with FastAPI. It focuses on structured logging, request correlation, strict API validation, and in-memory persistence for a demo environment.
+
+This folder contains a small FastAPI service that accepts incident payloads,
+validates and normalizes selected fields, and returns the resulting record.
+It demonstrates API-edge concerns—request validation, correlation IDs, and
+structured request logs—without relying on external infrastructure.
 
 ## Business purpose
-The service accepts incident payloads from downstream systems, normalizes messy input values, and stores validated records for later inspection. It is designed to represent the first step of an operational data pipeline where production-grade reliability is required even in a lightweight demo application.
+
+Operational events often arrive from legacy systems with inconsistent tenant
+names and severity labels. This service shows how an ingestion boundary can
+standardize those values and attach traceability metadata before accepting an
+event. It is an educational prototype, not a production ingestion platform.
 
 ## Key components
 
-### FastAPI application
-The service is defined in `main.py` and exposes:
-- `GET /healthz` for liveness and simple status checks
-- `POST /api/v1/ingest` for normalized incident ingestion
+- [`main.py`](main.py) defines the FastAPI application, payload model,
+  middleware, endpoints, and in-memory incident list.
+- [`requirements.txt`](requirements.txt) pins FastAPI, Uvicorn, Pydantic, and
+  Structlog.
+- `CorrelationIdMiddleware` uses the incoming `X-Correlation-ID` header when
+  present or generates an `fde-`-prefixed ID. It returns that ID and
+  `X-Process-Time-Ms` on responses and emits a structured completion log.
+- `LegacyIncidentPayload` validates required fields and normalizes tenant IDs
+  and severity values.
 
-### Correlation ID middleware
-A custom ASGI middleware adds a request correlation ID from the `X-Correlation-ID` header or generates one automatically. It also injects response headers:
-- `X-Correlation-ID`
-- `X-Process-Time-Ms`
+## API
 
-This is useful for tracing a single request across logs, downstream processing, and operational dashboards.
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/healthz` | Return `{"status":"healthy","ingested_count":N}`. |
+| `POST` | `/api/v1/ingest` | Validate and accept an incident; returns HTTP `201` and the normalized record. |
 
-### Pydantic validation and normalization
-The API uses a `LegacyIncidentPayload` model with strict validation and data cleanup logic:
-- tenant IDs are normalized to lowercase and whitespace-safe names
-- severity values are mapped from dirty legacy formats like `P1`, `SEV2`, `WARN`, or `1` to canonical values such as `CRITICAL`, `HIGH`, and `MEDIUM`
-- required fields are enforced before any record is accepted
+The ingestion request accepts:
 
-### In-memory storage
-The application keeps a list of accepted incidents in memory to support demonstration and debugging. This is intentionally simple and not production-persistent storage.
+| Field | Requirement and behavior |
+| --- | --- |
+| `tenant_id` | Required string, at least two characters before normalization; stripped, lowercased, and spaces replaced with underscores. |
+| `raw_severity` | Required string; stripped and uppercased, then mapped using the aliases below. An unrecognized value fails validation. |
+| `service_name` | Required string of at least two characters. |
+| `error_message` | Required string. |
+| `tags` | Optional list of strings; defaults to an empty list. |
+| `reported_at` | Optional string. The application does not parse or validate it as a timestamp. |
 
-## Request flow
-1. Client sends an incident payload to `/api/v1/ingest`.
-2. FastAPI validates input using the `LegacyIncidentPayload` schema.
-3. Severity and tenant values are normalized.
-4. The application adds metadata such as correlation ID and UTC ingest timestamp.
-5. The record is appended to the in-memory list and returned as a normalized response.
+Severity aliases are:
 
-## Example payload
-```json
-{
-  "tenant_id": "Acme Corp",
-  "raw_severity": "P1",
-  "service_name": "billing-api",
-  "error_message": "Database failover triggered",
-  "tags": ["db", "prod"],
-  "reported_at": "2026-11-06T12:00:00Z"
-}
-```
+| Normalized severity | Accepted values |
+| --- | --- |
+| `CRITICAL` | `SEV1`, `P1`, `CRITICAL`, `1` |
+| `HIGH` | `SEV2`, `P2`, `HIGH`, `2` |
+| `MEDIUM` | `SEV3`, `P3`, `WARN` |
+| `LOW` | `SEV4`, `INFO` |
 
-## Example response
-```json
-{
-  "status": "ingested",
-  "normalized_record": {
-    "tenant_id": "acme_corp",
-    "raw_severity": "CRITICAL",
+Invalid request bodies, including unknown severity values, receive FastAPI's
+standard HTTP `422` validation response. The service does not persist data:
+accepted records are held in a process-local Python list and are lost when the
+process restarts.
+
+## Example request
+
+```bash
+curl -i http://127.0.0.1:8000/api/v1/ingest \
+  -H 'Content-Type: application/json' \
+  -H 'X-Correlation-ID: demo-incident-001' \
+  -d '{
+    "tenant_id": "Acme Corp",
+    "raw_severity": "P1",
     "service_name": "billing-api",
     "error_message": "Database failover triggered",
     "tags": ["db", "prod"],
-    "reported_at": "2026-11-06T12:00:00Z",
-    "correlation_id": "fde-xxxx",
-    "ingested_at_utc": "2026-11-06T12:00:00.123456"
-  }
-}
+    "reported_at": "2026-11-06T12:00:00Z"
+  }'
 ```
 
-## Run it
+The response contains `"status": "ingested"` and a `normalized_record` with
+`tenant_id: "acme_corp"`, `raw_severity: "CRITICAL"`, the supplied fields,
+the request correlation ID, and an `ingested_at_utc` value. The timestamp is
+generated with `datetime.utcnow().isoformat()` and has no explicit timezone
+suffix.
+
+## Run locally
+
 From the repository root:
 
 ```bash
 cd day1_2_fastapi
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-## Best use cases
-- API contract prototyping
-- Data ingestion normalization from legacy sources
-- Logging and traceability exercises
-- Lightweight service design experiments
+The service listens at `http://127.0.0.1:8000`. Interactive API documentation
+is available at `http://127.0.0.1:8000/docs`; the health endpoint is
+`http://127.0.0.1:8000/healthz`.
 
-## Notes
-This folder is intentionally simple and demonstrates the first layer of an event-driven enterprise platform: robust input handling and observability at the API edge.
+## Scope and limitations
+
+- Storage is in-memory and shared only by requests handled within the same
+  running process; there is no database, broker, or durable dead-letter queue.
+- Correlation IDs and request duration are returned as response headers and
+  included in request-completion logs.
+- `reported_at` is an optional unparsed string; only `ingested_at_utc` is
+  generated by the service.
+- The example does not implement authentication, authorization, rate limiting,
+  or a separate read/list endpoint for accepted records.

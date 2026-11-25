@@ -1,4 +1,41 @@
-# LangGraph SRE Agent with Phoenix
+# Day 18–19: LangGraph SRE Agent with Phoenix
+
+## Overview
+
+This folder implements a FastAPI service that routes SRE questions to fixed
+read-only metric queries or local Markdown runbook retrieval, then records
+traces in Arize Phoenix.
+
+## Business purpose
+
+SRE teams need answers grounded in operational data and runbooks, plus enough
+telemetry to evaluate latency and answer quality. This exercise demonstrates
+a small agent workflow with bounded retries, an abstention path, and
+OpenTelemetry instrumentation.
+
+## Key components
+
+- `agent_with_sre_evals.py` defines the LangGraph state machine, API endpoints,
+  read-only data access, deterministic runbook ranking, grounding check, and
+  Phoenix/OpenTelemetry spans.
+- `requirements.txt` lists the Python dependencies.
+- `tests/test_agent_with_sre_evals.py` exercises routing, SQL and runbook
+  behavior, grounding, and the API response shape.
+
+The current example does not call a paid language model: metric and runbook
+content supply the draft answer. Token counts are estimates, and cost remains
+zero unless rates are configured. The `caller_role` request field is not an
+authentication or authorization mechanism.
+
+## API
+
+- `GET /healthz` returns a simple health status.
+- `POST /api/v1/ask` returns the answer, selected intent, retrieved context
+  metadata, grounding score, and telemetry.
+- `POST /api/v1/ask/stream` streams the answer as server-sent events after
+  running the same workflow.
+
+## Run locally
 
 This example routes requests through a deterministic LangGraph:
 

@@ -35,6 +35,12 @@ The workflow includes:
 The cleaned data is written to:
 - `clean_claims.parquet`
 
+The Parquet output columns are `claim_id`, `tenant_id`, `patient_ref`,
+`amount_usd`, `latest_status`, and `last_updated_at`. The source CSV text is
+embedded in the script and written to `dirty_claims.csv` each time the script
+runs; the cleaning transformation reads that file from the current working
+directory.
+
 This makes the normalized result suitable for downstream analytics, dashboards, and automated reporting.
 
 ## Data cleaning logic
@@ -66,6 +72,10 @@ CLM-100,acme_health,PAT-991,1250.50,APPROVED,2026-10-02 14:30:00
 3. SQL applies sanitization and deduplication logic.
 4. The final cleaned dataset is exported to Parquet.
 5. The script prints the result as a DataFrame for quick validation.
+
+The latest row is selected by `updated_at` per normalized claim ID. If two
+rows for a claim have the same timestamp, the script does not define a
+secondary tie-breaker.
 
 ## Run it
 From this folder:
