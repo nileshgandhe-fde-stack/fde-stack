@@ -2,11 +2,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.error import URLError
 
 import duckdb
+import pytest
 from fastapi.testclient import TestClient
 
-from aegisops.api import Role, Settings, create_app
+import aegisops.api
+from aegisops.api import (
+    LLMUnavailableError,
+    OpenAICompatibleChatClient,
+    Role,
+    Settings,
+    create_app,
+)
 from aegisops.assistant import AskService, MarkdownRetriever
 from aegisops.metrics import InstrumentedChatClient, Telemetry
 
@@ -218,6 +227,19 @@ def test_instrumented_chat_client_tracks_usage_and_cost() -> None:
     snapshot = telemetry.snapshot()
     assert snapshot["llm_tokens_total"] == 20
     assert snapshot["llm_cost_usd_total"] == (12 * 2 + 8 * 4) / 1_000_000
+
+
+def test_chat_client_includes_network_failure_reason(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail_request(*args: object, **kwargs: object) -> None:
+        raise URLError("Name or service not known")
+
+    monkeypatch.setattr(aegisops.api, "urlopen", fail_request)
+    client = OpenAICompatibleChatClient(
+        "test-key", "https://example.invalid/v1", "test-model"
+    )
+
+    with pytest.raises(LLMUnavailableError, match="Name or service not known"):
+        client.complete("test prompt")
 
 
 def test_circuit_breaker_opens_and_pii_redaction_is_counted() -> None:

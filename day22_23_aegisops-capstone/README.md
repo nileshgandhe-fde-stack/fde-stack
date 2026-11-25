@@ -140,3 +140,13 @@ spin down when idle, so the first request after inactivity may take longer.
 Keep the demo token issuer enabled only for a controlled demonstration.
 Anyone who can reach the public demo can request a demo role token; do not use
 this configuration to protect production data or services.
+
+
+# “Ask about an incident ?” 
+In “Ask about an incident,” ask natural-language questions about SLA metrics and operational runbooks. For example:
+
+1. “What likely caused the elevated 5xx rate for payments-api? Separate measured evidence from possible causes.”
+2. “How is identity-service performing against its SLA, and what metrics support that?”
+3. “Which runbook steps should we follow for a retry storm?”
+4. “What should we check before increasing database connection-pool limits?”
+5. “What recovery signals should we monitor after scaling workers?”
